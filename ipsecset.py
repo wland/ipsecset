@@ -1,6 +1,10 @@
 #coding:utf-8
 """
 添加规则到ipsec
+因为salt中返回的结果不支持中文，而筛选器列表名称有中文，所以匹配的是所有的规则列表
+has()方法跳过了筛选器列表的判断:
+if k==u'filterlist':
+    continue
 """
 import subprocess
 import traceback
@@ -9,7 +13,6 @@ import cStringIO
 import sys
 import time
 import itertools
-import chardet
 
 #系统中存在的filters
 __filters=[]
@@ -54,6 +57,7 @@ def init(func):
     def t(*args,**kwargs):
         global __filters
         __filters=ipsecget.get_filters()
+        #open('d:\\backup\\ipsecset.log','a').write(str(__filters))
         return func(*args,**kwargs)
     return  t
 
@@ -97,6 +101,8 @@ def has(d):
         for k,v in filter.iteritems():
             if k ==u'description':
                 continue
+            if k==u'filterlist':
+                continue
             if d[k]!=v.lower():
                 has=False
                 break;
@@ -132,7 +138,7 @@ def analyze_cmd(args):
     必须有的参数：srcaddr，dstaddr，dstport
     e.q.:srcaddr=10.1.1.1 dstaddr=10.1.1.2 dstport=8080"""
     #args=args.split(' ')
-    d=dict([x.strip().split(u'=') for x in args if x.strip()])
+    d=dict([x.strip().split('=') for x in args if x.strip()])
     return analyze_dict(d)
 
 def analyze_dict(d_info):
@@ -151,6 +157,17 @@ def analyze_dict(d_info):
     #    u'filterlist' : u'\"ip筛选器列表2\"' ,
     #    u'srcmask' : u'255.255.255.255' ,
     #}
+
+    try:
+        d_info=dict([(str(k).decode('utf-8'),str(v).decode('utf-8')) for (k,v) in d_info.iteritems()])
+    except:
+        pass
+        #print 'WARNING:decode utf-8 fail.'
+    try:
+        d_info=dict([(str(k).decode('cp936'),str(v).decode('cp936')) for (k,v) in d_info.iteritems()])
+    except:
+        pass
+        #print 'WARNING:decode cp936 fail.It may be Unicode or other coding.'
 
     d_info=dict([(k.lower(),v.lower()) for k,v in d_info.iteritems()])#将键，值都变成小写，便于后面对比
 
@@ -210,20 +227,17 @@ def analyze_dict(d_info):
 @catch_exception
 @init
 def insert(args):
-    """主要接口，接收传入的insert参数"""
+    """主要接口，接收传入的insert参数
+    args:{'srcaddr':'1.1.1.1','dstaddr':'2.2.2.2','dstport':'90'}"""
+    #raise Exception(str(args)+'\r\n'+str(sys.argv))
     l=[]
-    if len(sys.argv)>1:
-        args=sys.argv[1:]
-        try:
-            args=map(lambda x: x.decode('utf-8'),args)
-        except:
-            args=map(lambda x: x.decode('cp936'),args)
-        l=analyze_cmd(args)
-    elif args:
+    if args:
         l=analyze_dict(args)
+    elif len(sys.argv)>1:
+        args=sys.argv[1:]
+        l=analyze_cmd(args)
     else:
         print 'args is empty'
-
     output=''
     for filter in l:
         res=add_filter(filter)
