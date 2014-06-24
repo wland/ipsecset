@@ -101,7 +101,7 @@ def has(d):
         for k,v in filter.iteritems():
             if k ==u'description':
                 continue
-            if k==u'filterlist':
+            if k==u'filterlist':#因为在salt中不支持中文，而filterlist有包含中文，为避免出错，就忽略掉filterlist了。
                 continue
             if d[k]!=v.lower():
                 has=False
@@ -186,6 +186,11 @@ def analyze_dict(d_info):
         }
     d.update(d_info)
 
+    #如果源或目的ip是any，需要修改相应的掩码为0.0.0.0
+    if d['srcaddr']==u'any':
+        d[u'srcmask']=u'0.0.0.0'
+    if d['dstaddr']==u'any':
+        d[u'dstmask']=u'0.0.0.0'
 
 
     #将描述和filter名称用双引号括起来
