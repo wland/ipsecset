@@ -101,9 +101,13 @@ def has(d):
         for k,v in filter.iteritems():
             if k ==u'description':
                 continue
-            if k==u'filterlist':#因为在salt中不支持中文，而filterlist有包含中文，为避免出错，就忽略掉filterlist了。
+            if k==u'filterlist':#因为在salt中不支持中文，而filterlist有包含中文，为避免出错，暂时忽略掉filterlist了。
                 continue
-            if d[k]!=v.lower():
+            if k==u'filterlist':#filterlist不用变为小写
+                if d[k]!=v:
+                    has=False
+                    break;
+            elif d[k]!=v.lower():
                 has=False
                 break;
         if has:
@@ -169,7 +173,15 @@ def analyze_dict(d_info):
         pass
         #print 'WARNING:decode cp936 fail.It may be Unicode or other coding.'
 
-    d_info=dict([(k.lower(),v.lower()) for k,v in d_info.iteritems()])#将键，值都变成小写，便于后面对比
+    #将键，值都变成小写，便于后面对比
+    #filterlist的值不用变成小写
+    #步骤：先将所有键名变为小写，然后查看是否有filterlist键名，如果有，保存到临时变量里，待所有键值都变为小写后，在用临时变量恢复。
+    d_info=dict([(k.lower(),v) for k,v in d_info.iteritems()])
+    if d_info.has_key('filterlist'):
+        filterlist=d_info['filterlist']
+    d_info=dict([(k,v.lower()) for k,v in d_info.iteritems()])
+    if d_info.has_key('filterlist'):
+        d_info['filterlist']=filterlist
 
     #参数是否足够
     if not d_info.has_key(u'srcaddr') or not d_info.has_key(u'dstaddr') or not d_info.has_key(u'dstport'):
